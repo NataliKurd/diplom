@@ -7,19 +7,19 @@ from vk_api.exceptions import ApiError
 from models import engine, Base, Session, User, DatingUser, Photos, BlackList
 from sqlalchemy.exc import IntegrityError, InvalidRequestError
 
-# Для работы с ВК
+# Р”Р»СЏ СЂР°Р±РѕС‚С‹ СЃ Р’Рљ
 vk = vk_api.VkApi(token=group_token)
 longpoll = VkLongPoll(vk)
-# Для работы с БД
+# Р”Р»СЏ СЂР°Р±РѕС‚С‹ СЃ Р‘Р”
 session = Session()
 connection = engine.connect()
 
 """ 
-ФУНКЦИИ ПОИСКА
+Р¤РЈРќРљР¦РР РџРћРРЎРљРђ
 """
 
 
-# Ищет людей по критериям
+# РС‰РµС‚ Р»СЋРґРµР№ РїРѕ РєСЂРёС‚РµСЂРёСЏРј
 def search_users(sex, age_at, age_to, city):
     all_persons = []
     link_profile = 'https://vk.com/id'
@@ -47,7 +47,7 @@ def search_users(sex, age_at, age_to, city):
     # return True
 
 
-# Находит фото людей
+# РќР°С…РѕРґРёС‚ С„РѕС‚Рѕ Р»СЋРґРµР№
 def get_photo(user_owner_id):
     vk_ = vk_api.VkApi(token=user_token)
     try:
@@ -62,7 +62,7 @@ def get_photo(user_owner_id):
                                   'photo_sizes': 1,
                               })
     except ApiError:
-        return 'нет доступа к фото'
+        return 'РЅРµС‚ РґРѕСЃС‚СѓРїР° Рє С„РѕС‚Рѕ'
     users_photos = []
     for i in range(10):
         try:
@@ -70,21 +70,21 @@ def get_photo(user_owner_id):
                 [response['items'][i]['likes']['count'],
                  'photo' + str(response['items'][i]['owner_id']) + '_' + str(response['items'][i]['id'])])
         except IndexError:
-            users_photos.append(['нет фото.'])
+            users_photos.append(['РЅРµС‚ С„РѕС‚Рѕ.'])
     return users_photos
     # return True
 
 
 """ 
-ФУНКЦИИ СОРТИРОВКИ, ОТВЕТА, JSON
+Р¤РЈРќРљР¦РР РЎРћР РўРР РћР’РљР, РћРўР’Р•РўРђ, JSON
 """
 
 
-# Сортируем фото по лайкам, удаляем лишние элементы
+# РЎРѕСЂС‚РёСЂСѓРµРј С„РѕС‚Рѕ РїРѕ Р»Р°Р№РєР°Рј, СѓРґР°Р»СЏРµРј Р»РёС€РЅРёРµ СЌР»РµРјРµРЅС‚С‹
 def sort_likes(photos):
     result = []
     for element in photos:
-        if element != ['нет фото.'] and photos != 'нет доступа к фото':
+        if element != ['РЅРµС‚ С„РѕС‚Рѕ.'] and photos != 'РЅРµС‚ РґРѕСЃС‚СѓРїР° Рє С„РѕС‚Рѕ':
             result.append(element)
     return sorted(result)
 
@@ -106,4 +106,4 @@ def json_create(lst):
     with open("result.json", "a", encoding='UTF-8') as write_file:
         json.dump(res_list, write_file, ensure_ascii=False)
 
-    print(f'Информация о загруженных файлах успешно записана в json файл.')
+    print(f'РРЅС„РѕСЂРјР°С†РёСЏ Рѕ Р·Р°РіСЂСѓР¶РµРЅРЅС‹С… С„Р°Р№Р»Р°С… СѓСЃРїРµС€РЅРѕ Р·Р°РїРёСЃР°РЅР° РІ json С„Р°Р№Р».')
