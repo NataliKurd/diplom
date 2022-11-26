@@ -7,7 +7,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.exc import IntegrityError, InvalidRequestError
 
-# Подключение к БД
+# РџРѕРґРєР»СЋС‡РµРЅРёРµ Рє Р‘Р”
 Base = declarative_base()
 
 
@@ -15,22 +15,22 @@ engine = sq.create_engine('postgresql://user@localhost:5432/vkinder_db',
                           client_encoding='utf8')
 Session = sessionmaker(bind=engine)
 
-# Для работы с ВК
+# Р”Р»СЏ СЂР°Р±РѕС‚С‹ СЃ Р’Рљ
 vk = vk_api.VkApi(token=group_token)
 longpoll = VkLongPoll(vk)
-# Для работы с БД
+# Р”Р»СЏ СЂР°Р±РѕС‚С‹ СЃ Р‘Р”
 session = Session()
 connection = engine.connect()
 
 
-# Пользователь бота ВК
+# РџРѕР»СЊР·РѕРІР°С‚РµР»СЊ Р±РѕС‚Р° Р’Рљ
 class User(Base):
     __tablename__ = 'user'
     id = sq.Column(sq.Integer, primary_key=True, autoincrement=True)
     vk_id = sq.Column(sq.Integer, unique=True)
 
 
-# Анкеты добавленные в избранное
+# РђРЅРєРµС‚С‹ РґРѕР±Р°РІР»РµРЅРЅС‹Рµ РІ РёР·Р±СЂР°РЅРЅРѕРµ
 class DatingUser(Base):
     __tablename__ = 'dating_user'
     id = sq.Column(sq.Integer, primary_key=True, autoincrement=True)
@@ -42,7 +42,7 @@ class DatingUser(Base):
     id_user = sq.Column(sq.Integer, sq.ForeignKey('user.id', ondelete='CASCADE'))
 
 
-# Фото избранных анкет
+# Р¤РѕС‚Рѕ РёР·Р±СЂР°РЅРЅС‹С… Р°РЅРєРµС‚
 class Photos(Base):
     __tablename__ = 'photos'
     id = sq.Column(sq.Integer, primary_key=True, autoincrement=True)
@@ -51,7 +51,7 @@ class Photos(Base):
     id_dating_user = sq.Column(sq.Integer, sq.ForeignKey('dating_user.id', ondelete='CASCADE'))
 
 
-# Анкеты в черном списке
+# РђРЅРєРµС‚С‹ РІ С‡РµСЂРЅРѕРј СЃРїРёСЃРєРµ
 class BlackList(Base):
     __tablename__ = 'black_list'
     id = sq.Column(sq.Integer, primary_key=True, autoincrement=True)
@@ -66,31 +66,31 @@ class BlackList(Base):
 
 
 """ 
-ФУНКЦИИ РАБОТЫ С БД
+Р¤РЈРќРљР¦РР Р РђР‘РћРўР« РЎ Р‘Р”
 """
 
 
-# Удаляет пользователя из черного списка
+# РЈРґР°Р»СЏРµС‚ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ РёР· С‡РµСЂРЅРѕРіРѕ СЃРїРёСЃРєР°
 def delete_db_blacklist(ids):
     current_user = session.query(BlackList).filter_by(vk_id=ids).first()
     session.delete(current_user)
     session.commit()
 
 
-# Удаляет пользователя из избранного
+# РЈРґР°Р»СЏРµС‚ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ РёР· РёР·Р±СЂР°РЅРЅРѕРіРѕ
 def delete_db_favorites(ids):
     current_user = session.query(DatingUser).filter_by(vk_id=ids).first()
     session.delete(current_user)
     session.commit()
 
 
-# проверят зареган ли пользователь бота в БД
+# РїСЂРѕРІРµСЂСЏС‚ Р·Р°СЂРµРіР°РЅ Р»Рё РїРѕР»СЊР·РѕРІР°С‚РµР»СЊ Р±РѕС‚Р° РІ Р‘Р”
 def check_db_master(ids):
     current_user_id = session.query(User).filter_by(vk_id=ids).first()
     return current_user_id
 
 
-# проверят есть ли юзер в бд
+# РїСЂРѕРІРµСЂСЏС‚ РµСЃС‚СЊ Р»Рё СЋР·РµСЂ РІ Р±Рґ
 def check_db_user(ids):
     dating_user = session.query(DatingUser).filter_by(
         vk_id=ids).first()
@@ -99,23 +99,23 @@ def check_db_user(ids):
     return dating_user, blocked_user
 
 
-# Проверят есть ли юзер в черном списке
+# РџСЂРѕРІРµСЂСЏС‚ РµСЃС‚СЊ Р»Рё СЋР·РµСЂ РІ С‡РµСЂРЅРѕРј СЃРїРёСЃРєРµ
 def check_db_black(ids):
     current_users_id = session.query(User).filter_by(vk_id=ids).first()
-    # Находим все анкеты из избранного которые добавил данный юзер
+    # РќР°С…РѕРґРёРј РІСЃРµ Р°РЅРєРµС‚С‹ РёР· РёР·Р±СЂР°РЅРЅРѕРіРѕ РєРѕС‚РѕСЂС‹Рµ РґРѕР±Р°РІРёР» РґР°РЅРЅС‹Р№ СЋР·РµСЂ
     all_users = session.query(BlackList).filter_by(id_user=current_users_id.id).all()
     return all_users
 
 
-# Проверяет есть ли юзер в избранном
+# РџСЂРѕРІРµСЂСЏРµС‚ РµСЃС‚СЊ Р»Рё СЋР·РµСЂ РІ РёР·Р±СЂР°РЅРЅРѕРј
 def check_db_favorites(ids):
     current_users_id = session.query(User).filter_by(vk_id=ids).first()
-    # Находим все анкеты из избранного которые добавил данный юзер
+    # РќР°С…РѕРґРёРј РІСЃРµ Р°РЅРєРµС‚С‹ РёР· РёР·Р±СЂР°РЅРЅРѕРіРѕ РєРѕС‚РѕСЂС‹Рµ РґРѕР±Р°РІРёР» РґР°РЅРЅС‹Р№ СЋР·РµСЂ
     alls_users = session.query(DatingUser).filter_by(id_user=current_users_id.id).all()
     return alls_users
 
 
-# Пишет сообщение пользователю
+# РџРёС€РµС‚ СЃРѕРѕР±С‰РµРЅРёРµ РїРѕР»СЊР·РѕРІР°С‚РµР»СЋ
 def write_msg(user_id, message, attachment=None):
     vk.method('messages.send',
               {'user_id': user_id,
@@ -124,7 +124,7 @@ def write_msg(user_id, message, attachment=None):
                'attachment': attachment})
 
 
-# Регистрация пользователя
+# Р РµРіРёСЃС‚СЂР°С†РёСЏ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ
 def register_user(vk_id):
     try:
         new_user = User(
@@ -137,7 +137,7 @@ def register_user(vk_id):
         return False
 
 
-# Сохранение выбранного пользователя в БД
+# РЎРѕС…СЂР°РЅРµРЅРёРµ РІС‹Р±СЂР°РЅРЅРѕРіРѕ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ РІ Р‘Р”
 def add_user(event_id, vk_id, first_name, second_name, city, link, id_user):
     try:
         new_user = DatingUser(
@@ -151,15 +151,15 @@ def add_user(event_id, vk_id, first_name, second_name, city, link, id_user):
         session.add(new_user)
         session.commit()
         write_msg(event_id,
-                  'Пользователь успешно добавлен в избранное')
+                  'РџРѕР»СЊР·РѕРІР°С‚РµР»СЊ СѓСЃРїРµС€РЅРѕ РґРѕР±Р°РІР»РµРЅ РІ РёР·Р±СЂР°РЅРЅРѕРµ')
         return True
     except (IntegrityError, InvalidRequestError):
         write_msg(event_id,
-                  'Пользователь уже в избранном.')
+                  'РџРѕР»СЊР·РѕРІР°С‚РµР»СЊ СѓР¶Рµ РІ РёР·Р±СЂР°РЅРЅРѕРј.')
         return False
 
 
-# Сохранение в БД фото добавленного пользователя
+# РЎРѕС…СЂР°РЅРµРЅРёРµ РІ Р‘Р” С„РѕС‚Рѕ РґРѕР±Р°РІР»РµРЅРЅРѕРіРѕ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ
 def add_user_photos(event_id, link_photo, count_likes, id_dating_user):
     try:
         new_user = Photos(
@@ -170,15 +170,15 @@ def add_user_photos(event_id, link_photo, count_likes, id_dating_user):
         session.add(new_user)
         session.commit()
         write_msg(event_id,
-                  'Фото пользователя сохранено в избранном')
+                  'Р¤РѕС‚Рѕ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ СЃРѕС…СЂР°РЅРµРЅРѕ РІ РёР·Р±СЂР°РЅРЅРѕРј')
         return True
     except (IntegrityError, InvalidRequestError):
         write_msg(event_id,
-                  'Невозможно добавить фото этого пользователя(Уже сохранено)')
+                  'РќРµРІРѕР·РјРѕР¶РЅРѕ РґРѕР±Р°РІРёС‚СЊ С„РѕС‚Рѕ СЌС‚РѕРіРѕ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ(РЈР¶Рµ СЃРѕС…СЂР°РЅРµРЅРѕ)')
         return False
 
 
-# Добавление пользователя в черный список
+# Р”РѕР±Р°РІР»РµРЅРёРµ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ РІ С‡РµСЂРЅС‹Р№ СЃРїРёСЃРѕРє
 def add_to_black_list(event_id, vk_id, first_name, second_name, city, link, link_photo, count_likes, id_user):
     try:
         new_user = BlackList(
@@ -194,11 +194,11 @@ def add_to_black_list(event_id, vk_id, first_name, second_name, city, link, link
         session.add(new_user)
         session.commit()
         write_msg(event_id,
-                  'Пользователь успешно заблокирован.')
+                  'РџРѕР»СЊР·РѕРІР°С‚РµР»СЊ СѓСЃРїРµС€РЅРѕ Р·Р°Р±Р»РѕРєРёСЂРѕРІР°РЅ.')
         return True
     except (IntegrityError, InvalidRequestError):
         write_msg(event_id,
-                  'Пользователь уже в черном списке.')
+                  'РџРѕР»СЊР·РѕРІР°С‚РµР»СЊ СѓР¶Рµ РІ С‡РµСЂРЅРѕРј СЃРїРёСЃРєРµ.')
         return False
 
 
