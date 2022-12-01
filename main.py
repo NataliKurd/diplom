@@ -14,7 +14,6 @@ KEYBOARD_BANK = {'start_keyboard': Keyboard(one_time=True, inline=False),
                  'end_keyboard': Keyboard(one_time=True, inline=False)
                  }
 
-
 class MenuState(BaseStateGroup):
     GENDER = 1
     STATUS = 2
