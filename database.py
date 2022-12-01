@@ -6,7 +6,6 @@ from sqlalchemy import create_engine, MetaData, Table, Integer, String, \
     Column, ForeignKey, PrimaryKeyConstraint, select, func
 from sqlalchemy.sql.sqltypes import Boolean
 
-
 class VkinderAppDb():
     def __init__(self, su_name, su_pass, usr_name, usr_pass,
                  db_allready_exist=True):
