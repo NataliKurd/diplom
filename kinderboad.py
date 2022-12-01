@@ -2,12 +2,12 @@ from vkbottle import KeyboardButtonColor, Text
 
 
 def keyboard_init(keyboard_bank):
-    keyboard_bank['start_keyboard'].add(Text('Поиск по параметрам',
+    keyboard_bank['start_keyboard'].add(Text('РџРѕРёСЃРє РїРѕ РїР°СЂР°РјРµС‚СЂР°Рј',
                                              payload={"command": 'manual'}
                                              )
                                         )
     keyboard_bank['start_keyboard'].row()
-    keyboard_bank['start_keyboard'].add(Text('Найди какого-то для меня',
+    keyboard_bank['start_keyboard'].add(Text('РќР°Р№РґРё РєР°РєРѕРіРѕ-С‚Рѕ РґР»СЏ РјРµРЅСЏ',
                                              payload={"command": 'smart'}
                                              ),
                                         color=KeyboardButtonColor.POSITIVE
@@ -15,63 +15,63 @@ def keyboard_init(keyboard_bank):
     keyboard_bank['start_keyboard'].row()
     
 
-    keyboard_bank['gender_choise'].add(Text("мужчина",
+    keyboard_bank['gender_choise'].add(Text("РјСѓР¶С‡РёРЅР°",
                                             payload={"command": '2'}
                                             )
                                        )
-    keyboard_bank['gender_choise'].add(Text("женщина",
+    keyboard_bank['gender_choise'].add(Text("Р¶РµРЅС‰РёРЅР°",
                                             payload={"command": '1'}
                                             )
                                        )
-    keyboard_bank['status_choise-1'].add(Text("не замужем",
+    keyboard_bank['status_choise-1'].add(Text("РЅРµ Р·Р°РјСѓР¶РµРј",
                                               payload={"command": "single"}
                                               )
                                          )
-    keyboard_bank['status_choise-1'].add(Text("встречается",
+    keyboard_bank['status_choise-1'].add(Text("РІСЃС‚СЂРµС‡Р°РµС‚СЃСЏ",
                                               payload={"command": "meets"}))
     keyboard_bank['status_choise-1'].row()
-    keyboard_bank['status_choise-1'].add(Text("помолвлена",
+    keyboard_bank['status_choise-1'].add(Text("РїРѕРјРѕР»РІР»РµРЅР°",
                                               payload={"command": "engaged"}))
-    keyboard_bank['status_choise-1'].add(Text("замужем",
+    keyboard_bank['status_choise-1'].add(Text("Р·Р°РјСѓР¶РµРј",
                                               payload={"command": "married"}))
     keyboard_bank['status_choise-1'].row()
-    keyboard_bank['status_choise-1'].add(Text("всё сложно",
+    keyboard_bank['status_choise-1'].add(Text("РІСЃС‘ СЃР»РѕР¶РЅРѕ",
                                               payload={"command": "complicated"}))
-    keyboard_bank['status_choise-1'].add(Text("в активном поиске",
+    keyboard_bank['status_choise-1'].add(Text("РІ Р°РєС‚РёРІРЅРѕРј РїРѕРёСЃРєРµ",
                                               payload={"command": "search"}))
     keyboard_bank['status_choise-1'].row()
-    keyboard_bank['status_choise-1'].add(Text("влюблена",
+    keyboard_bank['status_choise-1'].add(Text("РІР»СЋР±Р»РµРЅР°",
                                               payload={"command": "in love"}))
-    keyboard_bank['status_choise-1'].add(Text("в гражданском браке",
+    keyboard_bank['status_choise-1'].add(Text("РІ РіСЂР°Р¶РґР°РЅСЃРєРѕРј Р±СЂР°РєРµ",
                                               payload={"command": "civil marriage"}))
 
-    keyboard_bank['status_choise-2'].add(Text("не женат",
+    keyboard_bank['status_choise-2'].add(Text("РЅРµ Р¶РµРЅР°С‚",
                                               payload={"command": "single"}))
-    keyboard_bank['status_choise-2'].add(Text("встречается",
+    keyboard_bank['status_choise-2'].add(Text("РІСЃС‚СЂРµС‡Р°РµС‚СЃСЏ",
                                               payload={"command": "meets"}))
     keyboard_bank['status_choise-2'].row()
-    keyboard_bank['status_choise-2'].add(Text("помолвлен",
+    keyboard_bank['status_choise-2'].add(Text("РїРѕРјРѕР»РІР»РµРЅ",
                                               payload={"command": "engaged"}))
-    keyboard_bank['status_choise-2'].add(Text("женат",
+    keyboard_bank['status_choise-2'].add(Text("Р¶РµРЅР°С‚",
                                          payload={"command": "married"}))
     keyboard_bank['status_choise-2'].row()
-    keyboard_bank['status_choise-2'].add(Text("всё сложно",
+    keyboard_bank['status_choise-2'].add(Text("РІСЃС‘ СЃР»РѕР¶РЅРѕ",
                                          payload={"command": "complicated"}))
-    keyboard_bank['status_choise-2'].add(Text("в активном поиске",
+    keyboard_bank['status_choise-2'].add(Text("РІ Р°РєС‚РёРІРЅРѕРј РїРѕРёСЃРєРµ",
                                          payload={"command": "search"}))
     keyboard_bank['status_choise-2'].row()
-    keyboard_bank['status_choise-2'].add(Text("влюблен",
+    keyboard_bank['status_choise-2'].add(Text("РІР»СЋР±Р»РµРЅ",
                                          payload={"command": "in love"}))
-    keyboard_bank['status_choise-2'].add(Text("в гражданском браке",
+    keyboard_bank['status_choise-2'].add(Text("РІ РіСЂР°Р¶РґР°РЅСЃРєРѕРј Р±СЂР°РєРµ",
                                          payload={"command": "civil marriage"})
                                          )
 
-    keyboard_bank['end_keyboard'].add(Text('Снвоа искать',
+    keyboard_bank['end_keyboard'].add(Text('РЎРЅРІРѕР° РёСЃРєР°С‚СЊ',
                                            payload={"command": 'again'}),
                                       color=KeyboardButtonColor.POSITIVE
                                       )
     keyboard_bank['end_keyboard'].row()
-    keyboard_bank['end_keyboard'].add(Text('Я всех уже нашёл',
+    keyboard_bank['end_keyboard'].add(Text('РЇ РІСЃРµС… СѓР¶Рµ РЅР°С€С‘Р»',
                                            payload={"command": 'end'}
                                            )
                                       )
