@@ -6,7 +6,6 @@ from database import VkinderAppDb
 DATABASE_U_USER = 'vkinder'
 DATABASE_U_PASS = 'vkinder'
 
-
 class VkSimpleApi():
     status_enum = {'single': 1,
                    'meets': 2,
