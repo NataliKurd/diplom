@@ -1,4 +1,4 @@
-﻿import logging
+import logging
 from vkbottle.bot import Bot, Message
 from vkbottle import BaseStateGroup, GroupEventType,\
                      GroupTypes, Keyboard, VKAPIError
@@ -13,6 +13,7 @@ KEYBOARD_BANK = {'start_keyboard': Keyboard(one_time=True, inline=False),
                  'status_choise-2': Keyboard(one_time=True, inline=False),
                  'end_keyboard': Keyboard(one_time=True, inline=False)
                  }
+
 
 class MenuState(BaseStateGroup):
     GENDER = 1
@@ -32,6 +33,45 @@ class VKinderInterface():
                         'status': None,
                         'user_id': None
                         }
+    response = vk_.method('search_parameter',
+                          {'gender': gender,
+                           'age_from': age_from,
+                           'age_to': age_to,
+                           'city': city
+                           })
+    for element in response['items']:
+        person = [
+            element['first_name'],
+            element['last_name'],
+            link_profile + str(element['id']),
+            element['id']
+        ]
+        all_persons.append(person)
+    return all_persons
+
+    def search_users(sex, age_from, age_to, city):
+        all_persons = []
+    link_profile = 'https://vk.com/id'
+    response = vk_.method('users.search',
+                          {'sort': 1,
+                           'gender': gender,
+                           'status': 1,
+                           'age_from': age_from,
+                           'age_to': age_to,
+                           'has_photo': 1,
+                           'count': 25,
+                           'online': 1,
+                           'hometown': city
+                           })
+    for element in response['items']:
+        person = [
+            element['first_name'],
+            element['last_name'],
+            link_profile + str(element['id']),
+            element['id']
+        ]
+        all_persons.append(person)
+    return all_persons
 
     def __init__(self, api, bot):
         self.api = api
