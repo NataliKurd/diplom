@@ -1,111 +1,99 @@
-﻿import psycopg2
-from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
+import psycopg2
+from config import *
 
-from sqlalchemy.sql.expression import insert
-from sqlalchemy import create_engine, MetaData, Table, Integer, String, \
-    Column, ForeignKey, PrimaryKeyConstraint, select, func
-from sqlalchemy.sql.sqltypes import Boolean
+# Работа с базой данных
+connection = psycopg2.connect(
+    host=host,
+    user=user,
+    password=password,
+    database=db_name
+)
 
-class VkinderAppDb():
-    def __init__(self, su_name, su_pass, usr_name, usr_pass,
-                 db_allready_exist=True):
-        if db_allready_exist is False:
-            self._db_create(su_name, su_pass, 'vkinder',
-                            usr_name, usr_pass)
+connection.autocommit = True
 
-        db = f"postgresql://{usr_name}:{usr_pass}@localhost:5432/{'vkinder'}"
-        self.engine = create_engine(db)
-        self.metadata = MetaData()
-        self._table_create()
 
-        if db_allready_exist is False:
-            self.metadata.create_all(self.engine)
+def create_table_users():
+    """Создание таблицы users (найденные пользователи)"""
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """CREATE TABLE IF NOT EXISTS users(
+                id serial,
+                first_name varchar(50) NOT NULL,
+                last_name varchar(25) NOT NULL,
+                vk_id varchar(20) NOT NULL PRIMARY KEY,
+                vk_link varchar(50));"""
+        )
+    print("[INFO] Table USERS was created.")
 
-    def _db_create(self, su_name, su_pass, db_name, u_name, u_pass):
-        connection = psycopg2.connect(user=su_name, password=su_pass)
-        connection.set_isolation_level(ISOLATION_LEVEL_AUTOCOMMIT)
-        cursor = connection.cursor()
-        cursor.execute(f'CREATE DATABASE {db_name}')
-        cursor.execute(f"CREATE USER {u_name} WITH PASSWORD '{u_pass}'")
-        cursor.execute(f"ALTER DATABASE {db_name} OWNER TO {u_name}")
-        cursor.close()
-        connection.close()
 
-    def _table_create(self):
-        self.users = Table("Users", self.metadata,
-                           Column('id', Integer(), primary_key=True),
-                           Column('vk_id', String(255), nullable=False)
-                           )
+def create_table_seen_users():  # references users(vk_id)
+    """Создание таблицы seen_users (просмотренные пользователи)"""
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """CREATE TABLE IF NOT EXISTS seen_users(
+            id serial,
+            vk_id varchar(50) PRIMARY KEY);"""
+        )
+    print("[INFO] Table SEEN_USERS was created.")
 
-        self.profile = Table("Profile", self.metadata,
-                             Column('id', Integer(), primary_key=True),
-                             Column('vk_id', String(255), nullable=False),
-                             Column('favorite', Boolean()),
-                             Column('blacklist', Boolean())
-                             )
 
-        self.users_profile = Table("UserProfile", self.metadata,
-                                   Column('user_id', ForeignKey('Users.id')),
-                                   Column('profile_id',
-                                          ForeignKey('Profile.id')),
-                                   PrimaryKeyConstraint('user_id',
-                                                        'profile_id',
-                                                        name='pk_usr_prof'
-                                                        )
-                                   )
+def insert_data_users(first_name, last_name, vk_id, vk_link):
+    """Вставка данных в таблицу users"""
+    with connection.cursor() as cursor:
+        cursor.execute(
+            f"""INSERT INTO users (first_name, last_name, vk_id, vk_link) 
+            VALUES ('{first_name}', '{last_name}', '{vk_id}', '{vk_link}');"""
+        )
 
-    def ins_to_table(self, table, data):
-        connection = self.engine.connect()
-        connection.execute(insert(table), data)
-        filter = func.max(table.c.id)
-        sel_last_id = select(filter)
-        last_id = connection.execute(sel_last_id).fetchone()[0]
-        connection.close()
-        return last_id
 
-    def load_users(self, vk_id):
-        connection = self.engine.connect()
-        sel_id = select(self.users).where(self.users.c.id == vk_id)
-        out = connection.execute(sel_id).fetchone()
-        connection.close()
-        if out:
-            last_id = out.id
-        else:
-            data = {'vk_id': vk_id}
-            last_id = self.ins_to_table(self.users, data)
-        return last_id
+def insert_data_seen_users(vk_id, offset):
+    """Вставка данных в таблицу seen_users"""
+    with connection.cursor() as cursor:
+        cursor.execute(
+            f"""INSERT INTO seen_users (vk_id) 
+            VALUES ('{vk_id}')
+            OFFSET '{offset}';"""
+        )
 
-    def load_profile(self, vk_id: str, favorite: bool, blaklist: bool) -> int:
-        connection = self.engine.connect()
-        sel_id = select(self.users).where(self.users.c.id == vk_id)
-        out = connection.execute(sel_id).fetchone()
-        connection.close()
-        if out:
-            last_id = out.id
-        else:
-            data = {'vk_id': vk_id,
-                    'favorite': favorite,
-                    'blaklist': blaklist
-                    }
-            last_id = self.ins_to_table(self.profile, data)
-        return last_id
 
-    def load_users_profile(self, user_id, profile_id):
-        users_profile_data = {'user_id': user_id, 'profile_id': profile_id}
-        connection = self.engine.connect()
-        connection.execute(insert(self.users_profile), users_profile_data)
+def select(offset):
+    """Выборка из непросмотренных людей"""
+    with connection.cursor() as cursor:
+        cursor.execute(
+            f"""SELECT u.first_name,
+                        u.last_name,
+                        u.vk_id,
+                        u.vk_link,
+                        su.vk_id
+                        FROM users AS u
+                        LEFT JOIN seen_users AS su 
+                        ON u.vk_id = su.vk_id
+                        WHERE su.vk_id IS NULL
+                        OFFSET '{offset}';"""
+        )
+        return cursor.fetchone()
 
-    def get_profile_list(self, user_vk_id):
-        sel = select(self.profile.c.vk_id
-                     ).select_from(self.profile
-                                   .join(self.users_profile)
-                                   .join(self.users)
-                                   ).where(self.users.c.vk_id == str(user_vk_id))
-        conntion = self.engine.connect()
-        out = conntion.execute(sel)
-        conntion.close()
-        return [i[0] for i in out.fetchall()]
 
-if __name__ == '__main__':
-    database = VkinderAppDb('postgres', 'postgres',
-                            'vkinder', 'vkinder', False)
+def drop_users():
+    """Удаление таблицы users каскадом"""
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """DROP TABLE IF EXISTS users CASCADE;"""
+        )
+        print('[INFO] Table USERS was deleted.')
+
+
+def drop_seen_users():
+    """Удаление таблицы seen_users каскадом"""
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """DROP TABLE  IF EXISTS seen_users CASCADE;"""
+        )
+        print('[INFO] Table SEEN_USERS was deleted.')
+
+
+def creating_database():
+    drop_users()
+    drop_seen_users()
+    create_table_users()
+    create_table_seen_users()
