@@ -1,274 +1,302 @@
-import logging
-from vkbottle.bot import Bot, Message
-from vkbottle import BaseStateGroup, GroupEventType,\
-                     GroupTypes, Keyboard, VKAPIError
-from vk_simple_api import VkSimpleApi
-from kinderboad import keyboard_init
-
-logging.basicConfig(level=logging.INFO)
-
-KEYBOARD_BANK = {'start_keyboard': Keyboard(one_time=True, inline=False),
-                 'gender_choise': Keyboard(one_time=True, inline=False),
-                 'status_choise-1': Keyboard(one_time=True, inline=False),
-                 'status_choise-2': Keyboard(one_time=True, inline=False),
-                 'end_keyboard': Keyboard(one_time=True, inline=False)
-                 }
+from config import user_token, community_token, offset, line
+import vk_api
+import requests
+import datetime
+from vk_api.longpoll import VkLongPoll, VkEventType
+from random import randrange
+from database import *
 
 
-class MenuState(BaseStateGroup):
-    GENDER = 1
-    STATUS = 2
-    ID = 3
-    AGE = 4
-    CITY = 5
-    END = 6
-    TYPE = 7
+class VKBot:
+    def __init__(self):
+        print('Бот создан!.')
+        self.vk = vk_api.VkApi(token=community_token)  # Авторизация сообщества
+        self.longpoll = VkLongPoll(self.vk)  # Работа с сообщениями
 
+    def write_msg(self, user_id, message):
+        """Метод отправки сообщений"""
+        self.vk.method('messages.send', {'user_id': user_id,
+                                         'message': message,
+                                         'random_id': randrange(10 ** 7)})
 
-class VKinderInterface():
-    search_parameter = {'gender': None,
-                        'age_from': None,
-                        'age_to': None,
-                        'city': None,
-                        'status': None,
-                        'user_id': None
-                        }
-    response = vk_.method('search_parameter',
-                          {'gender': gender,
-                           'age_from': age_from,
-                           'age_to': age_to,
-                           'city': city
-                           })
-    for element in response['items']:
-        person = [
-            element['first_name'],
-            element['last_name'],
-            link_profile + str(element['id']),
-            element['id']
-        ]
-        all_persons.append(person)
-    return all_persons
-
-    def search_users(sex, age_from, age_to, city):
-        all_persons = []
-    link_profile = 'https://vk.com/id'
-    response = vk_.method('users.search',
-                          {'sort': 1,
-                           'gender': gender,
-                           'status': 1,
-                           'age_from': age_from,
-                           'age_to': age_to,
-                           'has_photo': 1,
-                           'count': 25,
-                           'online': 1,
-                           'hometown': city
-                           })
-    for element in response['items']:
-        person = [
-            element['first_name'],
-            element['last_name'],
-            link_profile + str(element['id']),
-            element['id']
-        ]
-        all_persons.append(person)
-    return all_persons
-
-    def __init__(self, api, bot):
-        self.api = api
-        self.bot = bot
-
-    async def push_search(self, message):
-        await message.answer('Начинаю поиск, подождите:',)
-        users = await self.api.user_search(self.search_parameter['gender'],
-                                           self.search_parameter['age_from'],
-                                           self.search_parameter['age_to'],
-                                           self.search_parameter['city'],
-                                           self.search_parameter['status'],
-                                           self.search_parameter['user_id']
-                                           )
-        await message.answer(f'По запросу найдено {len(users)} анкет:')
-
-        for profile in users:
-            await message.answer(f"{profile['name']} - {profile['link']}")
-            for p_id in profile['photo_id']:
-                await message.answer(attachment=f"photo{profile['id']}_{p_id}")
-
-        self.search_parameter.clear()
-        await message.answer('Это все кого я нашёл',
-                             keyboard=KEYBOARD_BANK['end_keyboard']
-                             )
-        await self.bot.state_dispenser.set(message.peer_id, MenuState.END)
-
-    async def auto_parameters(self, message, id=None):
-        if id:
-            params = await self.api.user_get(id)
-        else:
-            params = await self.api.user_get(message.from_id)
-
-        self.search_parameter = params[0]
-        await message.answer((f"Будем искать для {params[1]['first_name']}"
-                              f" {params[1]['last_name']} {params[1]['url']}"
-                              ))
-        if None in self.search_parameter.values():
-            await message.answer(("Не хватает информации для поиска"
-                                 )
-                                 )
-        await self.gender_chose(message)
-
-    async def group_invite(self, event):
+    def name(self, user_id):
+        """Получение имени пользователя, который написал боту"""
+        url = f'https://api.vk.com/method/users.get'
+        params = {'access_token': user_token,
+                  'user_ids': user_id,
+                  'v': '5.131'}
+        repl = requests.get(url, params=params)
+        response = repl.json()
         try:
-            await self.bot.api.messages.send(peer_id=event.object.user_id,
-                           message=("Привет!"
-                                    " Я бот способный подбирать тебе пару"
-                                    "по твоим предпочтениям, давай поищем "
-                                    "по заданным параметрам. Выбирать тебе."
-                                    ),
-                           random_id=0,
-                           keyboard=KEYBOARD_BANK['start_keyboard'].get_json()
-                           )
-            await self.bot.state_dispenser.set(event.object.user_id, MenuState.TYPE)
-        except VKAPIError(901):
-            pass
+            information_dict = response['response']
+            for i in information_dict:
+                for key, value in i.items():
+                    first_name = i.get('first_name')
+                    return first_name
+        except KeyError:
+            self.write_msg(user_id, 'Ошибка, что-то не так.')
 
-    async def hello(self, message):
-        await message.answer(("Привет!"
-                              " Я бот способный подбирать тебе пару"
-                              " по твоим предпочтениям, давай поищем "
-                              "по заданным параметрам. Выбирать тебе."
-                              ),
-                             keyboard=KEYBOARD_BANK['start_keyboard']
-                             .get_json())
-        await self.bot.state_dispenser.set(message.peer_id, MenuState.TYPE)
+    def get_sex(self, user_id):
+        """Получение пола пользователя, меняет на противоположный"""
+        url = f'https://api.vk.com/method/users.get'
+        params = {'access_token': user_token,
+                  'user_ids': user_id,
+                  'fields': 'sex',
+                  'v': '5.131'}
+        repl = requests.get(url, params=params)
+        response = repl.json()
+        try:
+            information_list = response['response']
+            for i in information_list:
+                if i.get('sex') == 2:
+                    find_sex = 1
+                    return find_sex
+                elif i.get('sex') == 1:
+                    find_sex = 2
+                    return find_sex
+        except KeyError:
+            self.write_msg(user_id, 'Ошибка, что-то не так...')
 
-    async def gender_chose(self, message):
-        if self.search_parameter.get('gender', None) is None:
-            await message.answer('Выбери нужный пол',
-                                 keyboard=KEYBOARD_BANK['gender_choise']
-                                 .get_json())
-            await self.bot.state_dispenser.set(message.peer_id,
-                                               MenuState.GENDER)
+    def get_age_low(self, user_id):
+        """Получение возраста пользователя или нижней границы для поиска"""
+        url = url = f'https://api.vk.com/method/users.get'
+        params = {'access_token': user_token,
+                  'user_ids': user_id,
+                  'fields': 'bdate',
+                  'v': '5.131'}
+        repl = requests.get(url, params=params)
+        response = repl.json()
+        try:
+            information_list = response['response']
+            for i in information_list:
+                date = i.get('bdate')
+            date_list = date.split('.')
+            if len(date_list) == 3:
+                year = int(date_list[2])
+                year_now = int(datetime.date.today().year)
+                return year_now - year
+            elif len(date_list) == 2 or date not in information_list:
+                self.write_msg(user_id, 'Введите нижний порог возраста (min - 18): ')
+                for event in self.longpoll.listen():
+                    if event.type == VkEventType.MESSAGE_NEW and event.to_me:
+                        age = event.text
+                        return age
+        except KeyError:
+            self.write_msg(user_id, 'Ошибка, что-то не так.')
+
+
+    def get_age_high(self, user_id):
+        """Получение возраста пользователя или верхней границы для поиска"""
+        url = url = f'https://api.vk.com/method/users.get'
+        params = {'access_token': user_token,
+                  'user_ids': user_id,
+                  'fields': 'bdate',
+                  'v': '5.131'}
+        repl = requests.get(url, params=params)
+        response = repl.json()
+        try:
+            information_list = response['response']
+            for i in information_list:
+                date = i.get('bdate')
+            date_list = date.split('.')
+            if len(date_list) == 3:
+                year = int(date_list[2])
+                year_now = int(datetime.date.today().year)
+                return year_now - year
+            elif len(date_list) == 2 or date not in information_list:
+                self.write_msg(user_id, 'Введите верхний порог возраста (max - 65): ')
+                for event in self.longpoll.listen():
+                    if event.type == VkEventType.MESSAGE_NEW and event.to_me:
+                        age = event.text
+                        return age
+        except KeyError:
+            self.write_msg(user_id, 'Ошибка, что-то не так.')
+
+    def cities(self, user_id, city_name):
+        """Получение ID города пользователя по названию"""
+        url = url = f'https://api.vk.com/method/database.getCities'
+        params = {'access_token': user_token,
+                  'country_id': 1,
+                  'q': f'{city_name}',
+                  'need_all': 0,
+                  'count': 1000,
+                  'v': '5.131'}
+        repl = requests.get(url, params=params)
+        response = repl.json()
+        try:
+            information_list = response['response']
+            list_cities = information_list['items']
+            for i in list_cities:
+                found_city_name = i.get('title')
+                if found_city_name == city_name:
+                    found_city_id = i.get('id')
+                    return int(found_city_id)
+        except KeyError:
+            self.write_msg(user_id, 'Ошибка, что-то не так.')
+
+    def find_city(self, user_id):
+        """Получение информации о городе пользователя"""
+        url = f'https://api.vk.com/method/users.get'
+        params = {'access_token': user_token,
+                  'fields': 'city',
+                  'user_ids': user_id,
+                  'v': '5.131'}
+        repl = requests.get(url, params=params)
+        response = repl.json()
+        try:
+            information_dict = response['response']
+            for i in information_dict:
+                if 'city' in i:
+                    city = i.get('city')
+                    id = str(city.get('id'))
+                    return id
+                elif 'city' not in i:
+                    self.write_msg(user_id, 'Введите название вашего города: ')
+                    for event in self.longpoll.listen():
+                        if event.type == VkEventType.MESSAGE_NEW and event.to_me:
+                            city_name = event.text
+                            id_city = self.cities(user_id, city_name)
+                            if id_city != '' or id_city != None:
+                                return str(id_city)
+                            else:
+                                break
+        except KeyError:
+            self.write_msg(user_id, 'Ошибка, что-то не так...')
+
+    def find_user(self, user_id):
+        """Поиск человека по полученным данным"""
+        url = f'https://api.vk.com/method/users.search'
+        params = {'access_token': user_token,
+                  'v': '5.131',
+                  'sex': self.get_sex(user_id),
+                  'age_from': self.get_age_low(user_id),
+                  'age_to': self.get_age_high(user_id),
+                  'city': self.find_city(user_id),
+                  'fields': 'is_closed, id, first_name, last_name',
+                  'status': '1' or '6',
+                  'count': 500}
+        resp = requests.get(url, params=params)
+        resp_json = resp.json()
+        try:
+            dict_1 = resp_json['response']
+            list_1 = dict_1['items']
+            for person_dict in list_1:
+                if person_dict.get('is_closed') == False:
+                    first_name = person_dict.get('first_name')
+                    last_name = person_dict.get('last_name')
+                    vk_id = str(person_dict.get('id'))
+                    vk_link = 'vk.com/id' + str(person_dict.get('id'))
+                    insert_data_users(first_name, last_name, vk_id, vk_link)
+                else:
+                    continue
+            return f'Поиск завершён.'
+        except KeyError:
+            self.write_msg(user_id, 'Ошибка, что-то не так.')
+
+    def get_photos_id(self, user_id):
+        """Получение ID фотографий с ранжированием в обратном порядке"""
+        url = 'https://api.vk.com/method/photos.getAll'
+        params = {'access_token': user_token,
+                  'type': 'album',
+                  'owner_id': user_id,
+                  'extended': 1,
+                  'count': 25,
+                  'v': '5.131'}
+        resp = requests.get(url, params=params)
+        dict_photos = dict()
+        resp_json = resp.json()
+        try:
+            dict_1 = resp_json['response']
+            list_1 = dict_1['items']
+            for i in list_1:
+                photo_id = str(i.get('id'))
+                i_likes = i.get('likes')
+                if i_likes.get('count'):
+                    likes = i_likes.get('count')
+                    dict_photos[likes] = photo_id
+            list_of_ids = sorted(dict_photos.items(), reverse=True)
+            return list_of_ids
+        except KeyError:
+            self.write_msg(user_id, 'Ошибка, что-то не так.')
+
+    def get_photo_1(self, user_id):
+        """Получение ID фотографии № 1"""
+        list = self.get_photos_id(user_id)
+        count = 0
+        for i in list:
+            count += 1
+            if count == 1:
+                return i[1]
+
+    def get_photo_2(self, user_id):
+        """Получение ID фотографии № 2"""
+        list = self.get_photos_id(user_id)
+        count = 0
+        for i in list:
+            count += 1
+            if count == 2:
+                return i[1]
+
+    def get_photo_3(self, user_id):
+        """Получение ID фотографии № 3"""
+        list = self.get_photos_id(user_id)
+        count = 0
+        for i in list:
+            count += 1
+            if count == 3:
+                return i[1]
+
+    def send_photo_1(self, user_id, message, offset):
+        """Отправка первой фотографии"""
+        self.vk.method('messages.send', {'user_id': user_id,
+                                         'access_token': user_token,
+                                         'message': message,
+                                         'attachment': f'photo{self.person_id(offset)}_{self.get_photo_1(self.person_id(offset))}',
+                                         'random_id': 0})
+
+    def send_photo_2(self, user_id, message, offset):
+        """Отправка второй фотографии"""
+        self.vk.method('messages.send', {'user_id': user_id,
+                                         'access_token': user_token,
+                                         'message': message,
+                                         'attachment': f'photo{self.person_id(offset)}_{self.get_photo_2(self.person_id(offset))}',
+                                         'random_id': 0})
+
+    def send_photo_3(self, user_id, message, offset):
+        """Отправка третьей фотографии"""
+        self.vk.method('messages.send', {'user_id': user_id,
+                                         'access_token': user_token,
+                                         'message': message,
+                                         'attachment': f'photo{self.person_id(offset)}_{self.get_photo_3(self.person_id(offset))}',
+                                         'random_id': 0})
+
+    def find_persons(self, user_id, offset):
+        self.write_msg(user_id, self.found_person_info(offset))
+        self.person_id(offset)
+        insert_data_seen_users(self.person_id(offset), offset) #offset
+        self.get_photos_id(self.person_id(offset))
+        self.send_photo_1(user_id, 'Фото номер 1', offset)
+        if self.get_photo_2(self.person_id(offset)) != None:
+            self.send_photo_2(user_id, 'Фото номер 2', offset)
+            self.send_photo_3(user_id, 'Фото номер 3', offset)
         else:
-            await self.age_chose(message)
+            self.write_msg(user_id, f'Больше фотографий нет.')
 
-    async def age_chose(self, message):
-        if self.search_parameter.get('age_from', None) is None:
-            await message.answer(('Напиши Возраст'
-                                  'просто пришли мне два числа разделённые'
-                                  ' пробелом, и я буду искать в диапазоне'
-                                  ' между ними'),
-                                 )
-            await self.bot.state_dispenser.set(message.peer_id, MenuState.AGE)
-        else:
-            await self.city_chose(message)
+    def found_person_info(self, offset):
+        """Вывод информации о найденном пользователе"""
+        tuple_person = select(offset)
+        list_person = []
+        for i in tuple_person:
+            list_person.append(i)
+        return f'{list_person[0]} {list_person[1]}, ссылка - {list_person[3]}'
 
-    async def city_chose(self, message):
-        if self.search_parameter.get('city', None) is None:
-            await message.answer(('В каком городе будем искать?'
-                                 )
-                                 )
-            await self.bot.state_dispenser.set(message.peer_id, MenuState.CITY)
-        else:
-            await self.status_chose(message)
-
-    async def status_chose(self, message):
-        if self.search_parameter.get('status', None) is None:
-            await message.answer(('И теперь самое сложное.'
-                                 'Выберете статус искомых анкет'
-                                  ),
-                                 keyboard=KEYBOARD_BANK[f"status_choise-{self.search_parameter.get('gender', 'femail')}"
-                                                        ].get_json()
-                                 )
-            await self.bot.state_dispenser.set(message.peer_id,
-                                               MenuState.STATUS
-                                               )
-        else:
-            await self.push_search(message)
-
-    async def again(self, message):
-        await message.answer(("Отлично, как ищем на сей раз?"),
-                             keyboard=KEYBOARD_BANK['start_keyboard'
-                                                    ].get_json()
-                             )
-
-    async def goodby(self, message):
-        await message.answer(("Если понадоблюсь, я здесь, просто дай знать"
-                              " как мне искать"),
-                             keyboard=KEYBOARD_BANK['start_keyboard'
-                                                    ].get_json()
-                             )
-
-    async def search_for_any_id(self, message):
-        await message.answer("Напомни мне id.")
-        await self.bot.state_dispenser.set(message.peer_id, MenuState.ID)
+    def person_id(self, offset):
+        """Вывод ID найденного пользователя"""
+        tuple_person = select(offset)
+        list_person = []
+        for i in tuple_person:
+            list_person.append(i)
+        return str(list_person[2])
 
 
-if __name__ == '__main__':
-    token = ''
-    app_token = ''
-
-    bot = Bot(token)
-    api = VkSimpleApi(app_token)
-    interface = VKinderInterface(api, bot)
-    keyboard_init(KEYBOARD_BANK)
-
-    @bot.on.raw_event(GroupEventType.GROUP_JOIN,
-                      dataclass=GroupTypes.GroupJoin)
-    async def group_join_handler(event: GroupTypes.GroupJoin):
-        await interface.group_invite(event)
-
-    @bot.on.message(text=['Найди какого-то для меня'])
-    @bot.on.message(state=MenuState.TYPE, payload={"command": 'smart'})
-    async def info(message: Message):
-        await interface.auto_parameters(message)
-
-    @bot.on.message(text=['Поиск по параметрам'])
-    @bot.on.message(state=MenuState.TYPE, payload={"command": 'manual'})
-    async def gender_choise_in(message: Message):
-        interface.search_parameter['user_id'] = message.from_id
-        await interface.gender_chose(message)
-
-    @bot.on.message(state=MenuState.GENDER, payload_map=[("command", str)])
-    @bot.on.message(payload={"command": '/mail', "cmd": '/femail'})
-    async def gender_choise_acc(message: Message):
-        interface.search_parameter['gender'] \
-            = int(message.get_payload_json()['command'])
-        await interface.age_chose(message)
-
-    @bot.on.message(state=MenuState.STATUS, payload_map=[("command", str)])
-    async def chose_status(message: Message):
-        interface.search_parameter['status'] = message.get_payload_json()['command']
-        await bot.state_dispenser.delete(message.peer_id)
-        await interface.push_search(message)
-
-    @bot.on.message(text=["Снова искать"])
-    @bot.on.message(state=MenuState.END, payload={"command": 'again'})
-    async def searching_again(message: Message):
-        await interface.again(message)
-
-    @bot.on.message(text=['Я всех уже нашёл'])
-    @bot.on.message(state=MenuState.END, payload={"command": 'end'})
-    async def goobay(message: Message):
-        await interface.goodby(message)
-
-    @bot.on.message(state=MenuState.ID)
-    async def set_user_id(message: Message):
-        user_id = message.text
-        await interface.auto_parameters(message, user_id)
-
-    @bot.on.message(state=MenuState.AGE)
-    async def set_age(message: Message):
-        age = message.text.split(' ')
-        interface.search_parameter['age_from'] = age[0] if len(age) >= 1 else 0
-        interface.search_parameter['age_to'] = age[1] if len(age) >= 2 else 99
-        await interface.city_chose(message)
-
-    @bot.on.message(state=MenuState.CITY)
-    async def set_city(message: Message):
-        interface.search_parameter['city'] = message.text.strip()
-        await interface.status_chose(message)
-
-    @bot.on.message()
-    async def other(message: Message):
-        await interface.hello(message)
-
-    bot.run_forever()
+bot = VKBot()
