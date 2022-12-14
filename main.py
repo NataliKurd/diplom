@@ -24,7 +24,7 @@ class VKBot:
         url = f'https://api.vk.com/method/users.get'
         params = {'access_token': user_token,
                   'user_ids': user_id,
-                  'fields': ('sex', 'bdate', 'age_at', 'age_to'),  
+                  'fields': ('sex', 'bdate', 'age_low', 'age_high'),  
                   'v': '5.131'}
         repl = requests.get(url, params=params)
         response = repl.json()
