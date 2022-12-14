@@ -19,11 +19,12 @@ class VKBot:
                                          'message': message,
                                          'random_id': randrange(10 ** 7)})
 
-    def name(self, user_id):
+    def user_param (self, user_id):
         """Получение имени пользователя, который написал боту"""
         url = f'https://api.vk.com/method/users.get'
         params = {'access_token': user_token,
                   'user_ids': user_id,
+                  'fields': ('sex', 'bdate', 'age_at', 'age_to'),  
                   'v': '5.131'}
         repl = requests.get(url, params=params)
         response = repl.json()
@@ -36,13 +37,13 @@ class VKBot:
         except KeyError:
             self.write_msg(user_id, 'Ошибка, что-то не так.')
 
-    def get_sex(self, user_id):
-        """Получение пола пользователя, меняет на противоположный"""
-        url = f'https://api.vk.com/method/users.get'
-        params = {'access_token': user_token,
-                  'user_ids': user_id,
-                  'fields': 'sex',
-                  'v': '5.131'}
+   # def get_sex(self, user_id):
+   #     """Получение пола пользователя, меняет на противоположный"""
+   #     url = f'https://api.vk.com/method/users.get'
+   #     params = {'access_token': user_token,
+   #               'user_ids': user_id,
+   #               'fields': 'sex',
+   #               'v': '5.131'}
         repl = requests.get(url, params=params)
         response = repl.json()
         try:
@@ -57,13 +58,13 @@ class VKBot:
         except KeyError:
             self.write_msg(user_id, 'Ошибка, что-то не так...')
 
-    def get_age_low(self, user_id):
-        """Получение возраста пользователя или нижней границы для поиска"""
-        url = url = f'https://api.vk.com/method/users.get'
-        params = {'access_token': user_token,
-                  'user_ids': user_id,
-                  'fields': 'bdate',
-                  'v': '5.131'}
+#    def get_age_low(self, user_id):
+#        """Получение возраста пользователя или нижней границы для поиска"""
+#        url = url = f'https://api.vk.com/method/users.get'
+#        params = {'access_token': user_token,
+#                  'user_ids': user_id,
+#                  'fields': 'bdate',
+#                  'v': '5.131'}
         repl = requests.get(url, params=params)
         response = repl.json()
         try:
@@ -85,13 +86,13 @@ class VKBot:
             self.write_msg(user_id, 'Ошибка, что-то не так.')
 
 
-    def get_age_high(self, user_id):
-        """Получение возраста пользователя или верхней границы для поиска"""
-        url = url = f'https://api.vk.com/method/users.get'
-        params = {'access_token': user_token,
-                  'user_ids': user_id,
-                  'fields': 'bdate',
-                  'v': '5.131'}
+#    def get_age_high(self, user_id):
+#        """Получение возраста пользователя или верхней границы для поиска"""
+#        url = url = f'https://api.vk.com/method/users.get'
+#        params = {'access_token': user_token,
+#                  'user_ids': user_id,
+#                  'fields': 'bdate',
+#                  'v': '5.131'}
         repl = requests.get(url, params=params)
         response = repl.json()
         try:
@@ -111,6 +112,9 @@ class VKBot:
                         return age
         except KeyError:
             self.write_msg(user_id, 'Ошибка, что-то не так.')
+
+    def new_method(self):
+        return 'bdate'
 
     def cities(self, user_id, city_name):
         """Получение ID города пользователя по названию"""
@@ -172,7 +176,7 @@ class VKBot:
                   'age_from': self.get_age_low(user_id),
                   'age_to': self.get_age_high(user_id),
                   'city': self.find_city(user_id),
-                  'fields': 'is_closed, id, first_name, last_name',
+                  'fields': ('is_closed, id, first_name, last_name', 'status'),
                   'status': '1' or '6',
                   'count': 500}
         resp = requests.get(url, params=params)
@@ -252,21 +256,19 @@ class VKBot:
                                          'access_token': user_token,
                                          'message': message,
                                          'attachment': f'photo{self.person_id(offset)}_{self.get_photo_1(self.person_id(offset))}',
-                                         'random_id': 0})
-
-    def send_photo_2(self, user_id, message, offset):
-        """Отправка второй фотографии"""
-        self.vk.method('messages.send', {'user_id': user_id,
-                                         'access_token': user_token,
-                                         'message': message,
+   #                                      'random_id': 0})
+   # def send_photo_2(self, user_id, message, offset):
+   #     """Отправка второй фотографии"""
+   #     self.vk.method('messages.send', {'user_id': user_id,
+   #                                      'access_token': user_token,
+   #                                      'message': message,
                                          'attachment': f'photo{self.person_id(offset)}_{self.get_photo_2(self.person_id(offset))}',
-                                         'random_id': 0})
-
-    def send_photo_3(self, user_id, message, offset):
-        """Отправка третьей фотографии"""
-        self.vk.method('messages.send', {'user_id': user_id,
-                                         'access_token': user_token,
-                                         'message': message,
+   #                                      'random_id': 0})
+   # def send_photo_3(self, user_id, message, offset):
+   #     """Отправка третьей фотографии"""
+   #     self.vk.method('messages.send', {'user_id': user_id,
+   #                                      'access_token': user_token,
+   #                                      'message': message,
                                          'attachment': f'photo{self.person_id(offset)}_{self.get_photo_3(self.person_id(offset))}',
                                          'random_id': 0})
 
