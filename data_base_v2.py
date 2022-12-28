@@ -1,6 +1,5 @@
 import sqlite3
 
-
 def create_table():
     try:
         sqlitr_connection = sqlite3.connect('Vkinder')
