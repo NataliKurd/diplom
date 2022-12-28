@@ -7,7 +7,6 @@ import requests
 
 import data_base_v2
 
-
 class VkAgent:
     def __init__(self, token: str):
         self.token = token
