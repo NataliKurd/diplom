@@ -1,304 +1,205 @@
-from config import user_token, community_token, offset, line
-import vk_api
-import requests
-import datetime
-from vk_api.longpoll import VkLongPoll, VkEventType
+import config
 from random import randrange
-from database import *
+from time import time
+import requests
+
+import vk_api
+from vk_api.keyboard import VkKeyboard, VkKeyboardColor
+from vk_api.longpoll import VkLongPoll, VkEventType
+
+from vk_agent import VkAgent
+from data_base_v2 import set_favorite, show_favorite, create_table
 
 
-class VKBot:
-    def __init__(self):
-        print('Бот создан!.')
-        self.vk = vk_api.VkApi(token=community_token)  # Авторизация сообщества
-        self.longpoll = VkLongPoll(self.vk)  # Работа с сообщениями
+token = config.vk_group_token
+user_token = config.vk_user_token
 
-    def write_msg(self, user_id, message):
-        """Метод отправки сообщений"""
-        self.vk.method('messages.send', {'user_id': user_id,
-                                         'message': message,
-                                         'random_id': randrange(10 ** 7)})
+vk = vk_api.VkApi(token=token)
+longpoll = VkLongPoll(vk)
+vk_upload = vk_api.VkUpload(vk)
 
-    def user_param (self, user_id):
-        """Получение имени пользователя, который написал боту"""
-        url = f'https://api.vk.com/method/users.get'
-        params = {'access_token': user_token,
-                  'user_ids': user_id,
-                  'fields': ('sex', 'bdate', 'age_low', 'age_high'),  
-                  'v': '5.131'}
-        repl = requests.get(url, params=params)
-        response = repl.json()
-        try:
-            information_dict = response['response']
-            for i in information_dict:
-                for key, value in i.items():
-                    first_name = i.get('first_name')
-                    return first_name
-        except KeyError:
-            self.write_msg(user_id, 'Ошибка, что-то не так.')
-
-   # def get_sex(self, user_id):
-   #     """Получение пола пользователя, меняет на противоположный"""
-   #     url = f'https://api.vk.com/method/users.get'
-   #     params = {'access_token': user_token,
-   #               'user_ids': user_id,
-   #               'fields': 'sex',
-   #               'v': '5.131'}
-        repl = requests.get(url, params=params)
-        response = repl.json()
-        try:
-            information_list = response['response']
-            for i in information_list:
-                if i.get('sex') == 2:
-                    find_sex = 1
-                    return find_sex
-                elif i.get('sex') == 1:
-                    find_sex = 2
-                    return find_sex
-        except KeyError:
-            self.write_msg(user_id, 'Ошибка, что-то не так...')
-
-#    def get_age_low(self, user_id):
-#        """Получение возраста пользователя или нижней границы для поиска"""
-#        url = url = f'https://api.vk.com/method/users.get'
-#        params = {'access_token': user_token,
-#                  'user_ids': user_id,
-#                  'fields': 'bdate',
-#                  'v': '5.131'}
-        repl = requests.get(url, params=params)
-        response = repl.json()
-        try:
-            information_list = response['response']
-            for i in information_list:
-                date = i.get('bdate')
-            date_list = date.split('.')
-            if len(date_list) == 3:
-                year = int(date_list[2])
-                year_now = int(datetime.date.today().year)
-                return year_now - year
-            elif len(date_list) == 2 or date not in information_list:
-                self.write_msg(user_id, 'Введите нижний порог возраста (min - 18): ')
-                for event in self.longpoll.listen():
-                    if event.type == VkEventType.MESSAGE_NEW and event.to_me:
-                        age = event.text
-                        return age
-        except KeyError:
-            self.write_msg(user_id, 'Ошибка, что-то не так.')
+vk_user = VkAgent(config.vk_user_token)
 
 
-#    def get_age_high(self, user_id):
-#        """Получение возраста пользователя или верхней границы для поиска"""
-#        url = url = f'https://api.vk.com/method/users.get'
-#        params = {'access_token': user_token,
-#                  'user_ids': user_id,
-#                  'fields': 'bdate',
-#                  'v': '5.131'}
-        repl = requests.get(url, params=params)
-        response = repl.json()
-        try:
-            information_list = response['response']
-            for i in information_list:
-                date = i.get('bdate')
-            date_list = date.split('.')
-            if len(date_list) == 3:
-                year = int(date_list[2])
-                year_now = int(datetime.date.today().year)
-                return year_now - year
-            elif len(date_list) == 2 or date not in information_list:
-                self.write_msg(user_id, 'Введите верхний порог возраста (max - 65): ')
-                for event in self.longpoll.listen():
-                    if event.type == VkEventType.MESSAGE_NEW and event.to_me:
-                        age = event.text
-                        return age
-        except KeyError:
-            self.write_msg(user_id, 'Ошибка, что-то не так.')
+def write_msg(user_id, message, keyboard=None):
+    param = {'user_id': user_id,
+             'message': message,
+             'random_id': randrange(10 ** 7)}
+    if keyboard is not None:
+        param['keyboard'] = keyboard.get_keyboard()
+    vk.method('messages.send', param)
 
-    def new_method(self):
-        return 'bdate'
 
-    def cities(self, user_id, city_name):
-        """Получение ID города пользователя по названию"""
-        url = url = f'https://api.vk.com/method/database.getCities'
-        params = {'access_token': user_token,
-                  'country_id': 1,
-                  'q': f'{city_name}',
-                  'need_all': 0,
-                  'count': 1000,
-                  'v': '5.131'}
-        repl = requests.get(url, params=params)
-        response = repl.json()
-        try:
-            information_list = response['response']
-            list_cities = information_list['items']
-            for i in list_cities:
-                found_city_name = i.get('title')
-                if found_city_name == city_name:
-                    found_city_id = i.get('id')
-                    return int(found_city_id)
-        except KeyError:
-            self.write_msg(user_id, 'Ошибка, что-то не так.')
+def write_msg_with_photo(user_id, list_of_ids, owner_id):
+    for i in list_of_ids:
+        vk.method('messages.send', {'user_id': user_id, 'attachment': f"photo{owner_id}_{i}",
+                                    'random_id': randrange(10 ** 7)})
 
-    def find_city(self, user_id):
-        """Получение информации о городе пользователя"""
-        url = f'https://api.vk.com/method/users.get'
-        params = {'access_token': user_token,
-                  'fields': 'city',
-                  'user_ids': user_id,
-                  'v': '5.131'}
-        repl = requests.get(url, params=params)
-        response = repl.json()
-        try:
-            information_dict = response['response']
-            for i in information_dict:
-                if 'city' in i:
-                    city = i.get('city')
-                    id = str(city.get('id'))
-                    return id
-                elif 'city' not in i:
-                    self.write_msg(user_id, 'Введите название вашего города: ')
-                    for event in self.longpoll.listen():
-                        if event.type == VkEventType.MESSAGE_NEW and event.to_me:
-                            city_name = event.text
-                            id_city = self.cities(user_id, city_name)
-                            if id_city != '' or id_city != None:
-                                return str(id_city)
+
+search_params_all_user = {}
+current_found_id = None
+
+
+def main():
+    create_table()
+    try:
+        for event in longpoll.listen():
+            if event.type == VkEventType.MESSAGE_NEW:
+                if event.to_me:
+                    request = event.text.lower()
+
+                    if request == 'начать' or request == 'привет':
+                        if event.user_id in search_params_all_user:
+                            continue
+                        else:
+                            search_params_all_user[event.user_id] = vk_user.get_default_param(event.user_id)
+
+                        if search_params_all_user[event.user_id][0] == 0:
+                            keyboard = VkKeyboard(inline=True)
+                            keyboard.add_button('Параметры', color=VkKeyboardColor.PRIMARY)
+                            keyboard.add_button('Искать', color=VkKeyboardColor.PRIMARY)
+                            write_msg(event.user_id, 'Кажется у вас не указан пол, '
+                                                     'для корректного поиска рекоммендуется изменить параметры.', keyboard)
+                        if search_params_all_user[event.user_id][2] == 0:
+                            keyboard = VkKeyboard(inline=True)
+                            keyboard.add_button('Параметры', color=VkKeyboardColor.PRIMARY)
+                            write_msg(event.user_id, 'Мы не смогли определить ваш возраст,'
+                                                     ' для корректного поиска неоходимо изменить параметры.', keyboard)
+                        else:
+                            if vk_user.get_name(event.user_id):
+                                write_msg(event.user_id, f'Привет, {vk_user.get_name(event.user_id)}')
+                                write_msg(event.user_id, 'Поиск будет осуществлен на основании данных вашей анкеты.'
+                                                         ' Изменить параметры поиска можно отпавив команду "Параметры"')
+                                keyboard = VkKeyboard(inline=True)
+                                keyboard.add_button('Искать', color=VkKeyboardColor.PRIMARY)
+                                write_msg(event.user_id, 'Начнем искать пару?', keyboard)
                             else:
-                                break
-        except KeyError:
-            self.write_msg(user_id, 'Ошибка, что-то не так...')
+                                write_msg(event.user_id, 'Ой, кажется возникла проблема на стороне VK.'
+                                                         ' Специалисты уже работают над ее устранением.')
 
-    def find_user(self, user_id):
-        """Поиск человека по полученным данным"""
-        url = f'https://api.vk.com/method/users.search'
-        params = {'access_token': user_token,
-                  'v': '5.131',
-                  'sex': self.get_sex(user_id),
-                  'age_from': self.get_age_low(user_id),
-                  'age_to': self.get_age_high(user_id),
-                  'city': self.find_city(user_id),
-                  'fields': ('is_closed, id, first_name, last_name', 'status'),
-                  'status': '1' or '6',
-                  'count': 500}
-        resp = requests.get(url, params=params)
-        resp_json = resp.json()
-        try:
-            dict_1 = resp_json['response']
-            list_1 = dict_1['items']
-            for person_dict in list_1:
-                if person_dict.get('is_closed') == False:
-                    first_name = person_dict.get('first_name')
-                    last_name = person_dict.get('last_name')
-                    vk_id = str(person_dict.get('id'))
-                    vk_link = 'vk.com/id' + str(person_dict.get('id'))
-                    insert_data_users(first_name, last_name, vk_id, vk_link)
-                else:
-                    continue
-            return f'Поиск завершён.'
-        except KeyError:
-            self.write_msg(user_id, 'Ошибка, что-то не так.')
+                    elif request == 'искать' or request == 'дальше':
+                        photo_param = vk_user.get_photo(search_params_all_user[event.user_id], event.user_id)
+                        current_found_id = photo_param[0]
+                        write_msg_with_photo(event.user_id, photo_param[1], photo_param[2])
+                        keyboard = VkKeyboard(inline=True)
+                        keyboard.add_button('В избранное', color=VkKeyboardColor.PRIMARY)
+                        keyboard.add_button('Дальше', color=VkKeyboardColor.PRIMARY)
+                        write_msg(event.user_id, f'{vk_user.get_name(photo_param[0])}  - vk.com/id{photo_param[0]}', keyboard)
 
-    def get_photos_id(self, user_id):
-        """Получение ID фотографий с ранжированием в обратном порядке"""
-        url = 'https://api.vk.com/method/photos.getAll'
-        params = {'access_token': user_token,
-                  'type': 'album',
-                  'owner_id': user_id,
-                  'extended': 1,
-                  'count': 25,
-                  'v': '5.131'}
-        resp = requests.get(url, params=params)
-        dict_photos = dict()
-        resp_json = resp.json()
-        try:
-            dict_1 = resp_json['response']
-            list_1 = dict_1['items']
-            for i in list_1:
-                photo_id = str(i.get('id'))
-                i_likes = i.get('likes')
-                if i_likes.get('count'):
-                    likes = i_likes.get('count')
-                    dict_photos[likes] = photo_id
-            list_of_ids = sorted(dict_photos.items(), reverse=True)
-            return list_of_ids
-        except KeyError:
-            self.write_msg(user_id, 'Ошибка, что-то не так.')
+                    elif request == 'в избранное':
+                        set_favorite(current_found_id, event.user_id)
+                        keyboard = VkKeyboard(inline=True)
+                        keyboard.add_button('Дальше', color=VkKeyboardColor.PRIMARY)
+                        write_msg(event.user_id, 'Пользователь добавлен в список "Избранные"', keyboard)
 
-    def get_photo_1(self, user_id):
-        """Получение ID фотографии № 1"""
-        list = self.get_photos_id(user_id)
-        count = 0
-        for i in list:
-            count += 1
-            if count == 1:
-                return i[1]
+                    elif request == 'параметры':
+                        keyboard = VkKeyboard(inline=True)
+                        keyboard.add_button('1', color=VkKeyboardColor.PRIMARY)
+                        keyboard.add_button('2', color=VkKeyboardColor.PRIMARY)
+                        keyboard.add_button('3', color=VkKeyboardColor.PRIMARY)
+                        keyboard.add_button('4', color=VkKeyboardColor.PRIMARY)
+                        write_msg(event.user_id, 'Какой параметр меняем?\n1 - Пол\n2 - Статус\n3 - Возраст\n4 - Город', keyboard)
+                        vk_user.clear_search_params(event.user_id)
 
-    def get_photo_2(self, user_id):
-        """Получение ID фотографии № 2"""
-        list = self.get_photos_id(user_id)
-        count = 0
-        for i in list:
-            count += 1
-            if count == 2:
-                return i[1]
+                        for event in longpoll.listen():
+                            if event.type == VkEventType.MESSAGE_NEW:
+                                if event.to_me:
+                                    request = event.text.lower()
 
-    def get_photo_3(self, user_id):
-        """Получение ID фотографии № 3"""
-        list = self.get_photos_id(user_id)
-        count = 0
-        for i in list:
-            count += 1
-            if count == 3:
-                return i[1]
+                                    if request == '1':
+                                        keyboard = VkKeyboard(inline=True)
+                                        keyboard.add_button('Женщину', color=VkKeyboardColor.NEGATIVE)
+                                        keyboard.add_button('Мужчину', color=VkKeyboardColor.PRIMARY)
+                                        write_msg(event.user_id, 'Кого ищем?', keyboard)
+                                        for event in longpoll.listen():
+                                            if event.type == VkEventType.MESSAGE_NEW:
+                                                if event.to_me:
+                                                    request = event.text.lower()
+                                                    if request == 'женщину':
+                                                        search_params_all_user[event.user_id][0] = 1
+                                                    else:
+                                                        search_params_all_user[event.user_id][0] = 2
+                                                    keyboard = VkKeyboard(inline=True)
+                                                    keyboard.add_button('Искать', color=VkKeyboardColor.PRIMARY)
+                                                    keyboard.add_button('Параметры', color=VkKeyboardColor.PRIMARY)
+                                                    write_msg(event.user_id, 'Готово!\nИщем или еще меняем параметры?', keyboard)
+                                                    break
+                                        break
 
-    def send_photo_1(self, user_id, message, offset):
-        """Отправка первой фотографии"""
-        self.vk.method('messages.send', {'user_id': user_id,
-                                         'access_token': user_token,
-                                         'message': message,
-                                         'attachment': f'photo{self.person_id(offset)}_{self.get_photo_1(self.person_id(offset))}',
-   #                                      'random_id': 0})
-   # def send_photo_2(self, user_id, message, offset):
-   #     """Отправка второй фотографии"""
-   #     self.vk.method('messages.send', {'user_id': user_id,
-   #                                      'access_token': user_token,
-   #                                      'message': message,
-                                         'attachment': f'photo{self.person_id(offset)}_{self.get_photo_2(self.person_id(offset))}',
-   #                                      'random_id': 0})
-   # def send_photo_3(self, user_id, message, offset):
-   #     """Отправка третьей фотографии"""
-   #     self.vk.method('messages.send', {'user_id': user_id,
-   #                                      'access_token': user_token,
-   #                                      'message': message,
-                                         'attachment': f'photo{self.person_id(offset)}_{self.get_photo_3(self.person_id(offset))}',
-                                         'random_id': 0})
+                                    if request == '2':
+                                        keyboard = VkKeyboard(inline=True)
+                                        keyboard.add_button('1', color=VkKeyboardColor.SECONDARY)
+                                        keyboard.add_button('2', color=VkKeyboardColor.SECONDARY)
+                                        keyboard.add_button('3', color=VkKeyboardColor.SECONDARY)
+                                        keyboard.add_button('4', color=VkKeyboardColor.SECONDARY)
+                                        write_msg(event.user_id, 'В каком статусе?')
+                                        write_msg(event.user_id, 'Не женат (замужем) - 1\nВ активном поиске - 2\n'
+                                                                 'Женат (Замужем) - 3\nВсе сложно - 4', keyboard)
+                                        for event in longpoll.listen():
+                                            if event.type == VkEventType.MESSAGE_NEW:
+                                                if event.to_me:
+                                                    request = event.text.lower()
+                                                    if request == '1':
+                                                        search_params_all_user[event.user_id][1] = 1
+                                                    elif request == '2':
+                                                        search_params_all_user[event.user_id][1] = 6
+                                                    elif request == '3':
+                                                        search_params_all_user[event.user_id][1] = 4
+                                                    elif request == '4':
+                                                        search_params_all_user[event.user_id][1] = 5
+                                                    keyboard = VkKeyboard(inline=True)
+                                                    keyboard.add_button('Искать', color=VkKeyboardColor.PRIMARY)
+                                                    keyboard.add_button('Параметры', color=VkKeyboardColor.PRIMARY)
+                                                    write_msg(event.user_id, 'Готово!\nИщем или еще меняем параметры?', keyboard)
+                                                    break
+                                        break
 
-    def find_persons(self, user_id, offset):
-        self.write_msg(user_id, self.found_person_info(offset))
-        self.person_id(offset)
-        insert_data_seen_users(self.person_id(offset), offset) #offset
-        self.get_photos_id(self.person_id(offset))
-        self.send_photo_1(user_id, 'Фото номер 1', offset)
-        if self.get_photo_2(self.person_id(offset)) != None:
-            self.send_photo_2(user_id, 'Фото номер 2', offset)
-            self.send_photo_3(user_id, 'Фото номер 3', offset)
-        else:
-            self.write_msg(user_id, f'Больше фотографий нет.')
+                                    if request == '3':
+                                        write_msg(event.user_id, 'С какого возраста ищем?')
+                                        for event in longpoll.listen():
+                                            if event.type == VkEventType.MESSAGE_NEW:
+                                                if event.to_me:
+                                                    request = event.text.lower()
+                                                    search_params_all_user[event.user_id][2] = request
+                                                    keyboard = VkKeyboard(inline=True)
+                                                    keyboard.add_button('Искать', color=VkKeyboardColor.PRIMARY)
+                                                    keyboard.add_button('Параметры', color=VkKeyboardColor.PRIMARY)
+                                                    write_msg(event.user_id, 'Готово!\nИщем или еще меняем параметры?', keyboard)
+                                                    break
+                                        break
 
-    def found_person_info(self, offset):
-        """Вывод информации о найденном пользователе"""
-        tuple_person = select(offset)
-        list_person = []
-        for i in tuple_person:
-            list_person.append(i)
-        return f'{list_person[0]} {list_person[1]}, ссылка - {list_person[3]}'
+                                    if request == '4':
+                                        write_msg(event.user_id, 'Где ищем (населенный пункт)?')
+                                        for event in longpoll.listen():
+                                            if event.type == VkEventType.MESSAGE_NEW:
+                                                if event.to_me:
+                                                    request = event.text
+                                                    search_params_all_user[event.user_id][3] = request
+                                                    keyboard = VkKeyboard(inline=True)
+                                                    keyboard.add_button('Искать', color=VkKeyboardColor.PRIMARY)
+                                                    keyboard.add_button('Параметры', color=VkKeyboardColor.PRIMARY)
+                                                    write_msg(event.user_id, 'Готово!\nИщем или еще меняем параметры?', keyboard)
+                                                    break
+                                        break
 
-    def person_id(self, offset):
-        """Вывод ID найденного пользователя"""
-        tuple_person = select(offset)
-        list_person = []
-        for i in tuple_person:
-            list_person.append(i)
-        return str(list_person[2])
+                    elif request == 'избранное':
+                        user_list = show_favorite(event.user_id)
+                        if len(user_list) < 1:
+                            keyboard = VkKeyboard(inline=True)
+                            keyboard.add_button('Искать', color=VkKeyboardColor.PRIMARY)
+                            write_msg(event.user_id, 'Список "Избранное" пуст!\nДавай поскорее найдем кого-нибудь', keyboard)
+                        else:
+                            for user in user_list:
+                                write_msg(event.user_id, f'{vk_user.get_name(user)}  - vk.com/id{user}')
+                    elif request == 'пока':
+                        write_msg(event.user_id, 'Пока((')
+                    elif request == 'помощь' or request == 'help' or request == 'хелп':
+                        write_msg(event.user_id, 'Комманды для бота:\n"Параметры" - установить параметры поиска.\n"Искать" -'
+                                                 ' искать пару.\n"Избранное" - показать список избранных пользователей')
+                    else:
+                        write_msg(event.user_id, 'Не понял вашего ответа...')
+    except requests.exceptions.RequestException:
+        time.sleep(10)
 
-
-bot = VKBot()
+if __name__ == '__main__':
+    main()
